@@ -1,12 +1,14 @@
 import React from 'react';
 import Quote from './components/Quote';
+import logo from './assets/logo.png';
 
 function App() {
   return (
     <div className="min-h-screen bg-[#f8f8ff]">
-      
-      {/* 1. FLOWING BAR CONTAINER */}
-      <div className="flex flex-col items-center pt-12">
+
+      {/* 1. LOGO + FLOWING BAR CONTAINER */}
+      <div className="flex flex-col items-center pt-8">
+        <img src={logo} alt="Astro Clean" className="h-14 md:h-20 w-auto mb-4" />
         {/* The thin, flowing filament */}
         <div className="w-24 h-1 rounded-full animate-flow shadow-[0_0_15px_rgba(250,204,21,0.4)]" />
       </div>

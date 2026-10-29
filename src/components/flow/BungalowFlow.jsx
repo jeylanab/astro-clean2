@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { calculateTotal, pricingConfig } from '../../data/pricingConfig';
-import { trackLead, PIXEL_NOSCRIPT_SRC } from '../../metaPixel';
+import React, { useState } from 'react';
+import { calculateTotal, pricingConfig, fmtMoney } from '../../data/pricingConfig';
+import RepPriceStep from '../RepPriceStep';
 
 // Asset Imports
 import extentionImg from '../../assets/extention.png';
@@ -14,8 +14,19 @@ import veluxImg from '../../assets/velux.png';
 import conservatoryImg from '../../assets/conservatory.png';
 import bifold from '../../assets/bifold.png';
 
+// ─── Property type for THIS file ───────────────────────────────────────────────
+// For the other 4 files, change these two values AND the component name at the
+// bottom (DetachedFlow → SemiDetachedFlow / TerracedFlow / TownHouseFlow / BungalowFlow).
+//   detached      → 'detached'       / 'Detached'
+//   semi-detached → 'semi-detached'  / 'Semi-Detached'
+//   terraced      → 'terraced'       / 'Terraced'
+//   town-house    → 'town-house'     / 'Town House'
+//   bungalow      → 'bungalow'       / 'Bungalow'
+const PROPERTY_TYPE  = 'semi-detached';
+const PROPERTY_LABEL = 'Semi-Detached';
+// ──────────────────────────────────────────────────────────────────────────────
+
 // ─── EmailJS Config ────────────────────────────────────────────────────────────
-// Replace these three values with yours from emailjs.com → Account → API Keys
 const EMAILJS_PUBLIC_KEY  = 'L_HUUCitUHX9S_4CF';
 const EMAILJS_SERVICE_ID  = 'service_rpo18jn';
 const EMAILJS_TEMPLATE_ID = 'template_dvk2clc';
@@ -52,7 +63,7 @@ const animStyles = `
 const BungalowFlow = ({ propertyInfo, onBack }) => {
   const [step, setStep] = useState(2);
   const [formData, setFormData] = useState({
-    propertyType: 'bungalow',
+    propertyType: PROPERTY_TYPE,
     bedrooms: '',
     hasExtension: null,
     extensionTypes: [],
@@ -65,16 +76,14 @@ const BungalowFlow = ({ propertyInfo, onBack }) => {
     hasBifold: null,
     bifoldCount: '',
     rearAccess: null,
+    finalPrice: null,
   });
 
   const [errors, setErrors]     = useState({});
   const [shakeKey, setShakeKey] = useState(0);
   const [sending, setSending]   = useState(false);
 
-  // ── Meta Pixel: fire Lead event only when user reaches the Success step ──────
-  useEffect(() => {
-    if (step === 17) trackLead();
-  }, [step]);
+  // NOTE: Meta Pixel intentionally removed — rep sales on an iPad must not count as ad leads.
 
   const triggerShake = () => setShakeKey(k => k + 1);
 
@@ -108,9 +117,11 @@ const BungalowFlow = ({ propertyInfo, onBack }) => {
     });
   };
 
-  // ── Pricing ──────────────────────────────────────────────────────────────────
-  const price2Monthly = calculateTotal(formData);
-  const priceMonthly  = price2Monthly - (pricingConfig.frequency?.monthlyDiscount || 4);
+  // ── Pricing (sales rep: one price = 2-monthly + markup, rep can lower it) ────
+  const startPrice = calculateTotal(formData) + pricingConfig.repMarkup;
+  const finalPrice = formData.finalPrice ?? startPrice;
+  const discount   = Math.round((startPrice - finalPrice) * 100) / 100;
+  const isTBC      = formData.bedrooms === '6+';
 
   // ── Email Sender ─────────────────────────────────────────────────────────────
   const sendBookingEmail = async ({ firstName, phone, address1, address2, postcode }) => {
@@ -130,9 +141,15 @@ const BungalowFlow = ({ propertyInfo, onBack }) => {
       ? `Yes — ${formData.extensionTypes.join(', ')}`
       : 'No';
 
+    const quoteLines = isTBC
+      ? 'Price             : TO BE CONFIRMED (6+ bedrooms)'
+      : `Starting Price    : £${fmtMoney(startPrice)}
+Agreed Price      : £${fmtMoney(finalPrice)}
+Discount Given    : £${fmtMoney(discount)}`;
+
     const message = `
 ═══════════════════════════════════
-   NEW BUNGALOW BOOKING — ASTRO CLEAN
+   SALES REP BOOKING — ${PROPERTY_LABEL.toUpperCase()} — ASTRO CLEAN
 ═══════════════════════════════════
 
 👤 CUSTOMER DETAILS
@@ -144,7 +161,7 @@ Postcode    : ${postcode}
 
 🏠 PROPERTY DETAILS
 ────────────────────
-Property Type  : Bungalow
+Property Type  : ${PROPERTY_LABEL}
 Bedrooms       : ${formData.bedrooms}
 Extension      : ${extensionSummary}
 Skylantern     : ${formData.hasSkylantern ? `Yes — ${formData.skylanternCount}` : 'No'}
@@ -155,8 +172,7 @@ Rear Access    : ${formData.rearAccess ? 'Yes (via gate)' : 'No access'}
 
 💷 QUOTE
 ────────
-Selected Plan   : ${formData.frequency === 'monthly' ? 'Monthly (save £4)' : '2-Monthly'}
-Price Per Clean : £${formData.frequency === 'monthly' ? priceMonthly : price2Monthly}
+${quoteLines}
 
 ═══════════════════════════════════
     `.trim();
@@ -459,66 +475,13 @@ Price Per Clean : £${formData.frequency === 'monthly' ? priceMonthly : price2Mo
         </div>
       )}
 
-      {/* Step 14: Final Price */}
-        {step === 14 && (
-<div className="flex flex-col h-full">
-  <h2 className="drop-in drop-in-1 text-3xl md:text-4xl font-black uppercase mb-1 text-blue-800">
-    Instant Quote
-  </h2>
-
-  <p className="drop-in drop-in-2 text-[10px] font-bold text-green-700/40 mb-8 uppercase tracking-widest">
-    Select Frequency
-  </p>
-
-  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-
-    {/* Monthly */}
-    <div
-      onClick={() => { setFormData(prev => ({ ...prev, frequency: 'monthly' })); next(); }}
-      className="drop-in drop-in-3 bg-green-50 p-6 rounded-3xl border-2 border-green-400 cursor-pointer hover:shadow-2xl hover:shadow-green-400/30 relative group transition-all"
-    >
-      <div className="absolute -top-3 left-6 bg-green-500 text-white px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest">
-        Popular
-      </div>
-
-      <p className="uppercase font-black text-[10px] mb-2 text-green-700/70">
-        Monthly
-      </p>
-
-      <h3 className="text-4xl font-black mb-1 text-green-600">
-        £{priceMonthly}
-      </h3>
-
-      <p className="text-[10px] font-black text-green-700/50 uppercase">
-        Save £4
-      </p>
-
-      <div className="mt-4 bg-green-500 text-white py-2 rounded-lg font-black uppercase text-xs text-center tracking-widest group-hover:bg-green-600 transition-colors">
-        Select
-      </div>
-    </div>
-
-    {/* 2-Monthly */}
-    <div
-      onClick={() => { setFormData(prev => ({ ...prev, frequency: '2-monthly' })); next(); }}
-      className="drop-in drop-in-4 bg-green-50 p-6 rounded-3xl border border-green-300 cursor-pointer hover:border-green-500 transition-all group"
-    >
-      <p className="uppercase font-black text-[10px] mb-2 text-green-700">
-        2-Monthly
-      </p>
-
-      <h3 className="text-4xl font-black mb-1 text-green-600">
-        £{price2Monthly}
-      </h3>
-
-      <div className="mt-4 border border-green-300 py-2 rounded-lg font-black uppercase text-xs text-green-600 text-center group-hover:bg-green-500 group-hover:text-white transition-all">
-        Select
-      </div>
-    </div>
-
-  </div>
-</div>
-        )}
+      {/* Step 14: Rep Price (single price, rep can lower it) */}
+      {step === 14 && (
+        <RepPriceStep
+          startPrice={startPrice}
+          onConfirm={(p) => { setFormData(prev => ({ ...prev, finalPrice: p })); next(); }}
+        />
+      )}
 
       {/* Step 15: Contact Details */}
       {step === 15 && (
@@ -530,7 +493,7 @@ Price Per Clean : £${formData.frequency === 'monthly' ? priceMonthly : price2Mo
                 type="text"
                 placeholder="Full Name*"
                 className={`${errors.firstName ? inputError : inputBase} text-xl`}
-                onChange={(e) => { setErrors(err => ({ ...err, firstName: '' })); }}
+                onChange={() => { setErrors(err => ({ ...err, firstName: '' })); }}
                 id="input-firstName"
               />
               {errors.firstName && <p key={shakeKey} className={`${errMsg} shake`}>{errors.firstName}</p>}
@@ -543,7 +506,7 @@ Price Per Clean : £${formData.frequency === 'monthly' ? priceMonthly : price2Mo
                 id="input-phone"
                 className={`${errors.phone ? inputError : inputBase} text-xl pl-16`}
                 style={{ backgroundImage: 'url("https://flagcdn.com/w20/gb.png")', backgroundRepeat: 'no-repeat', backgroundPosition: '16px center' }}
-                onChange={(e) => { setErrors(err => ({ ...err, phone: '' })); }}
+                onChange={() => { setErrors(err => ({ ...err, phone: '' })); }}
               />
               {errors.phone && <p key={shakeKey} className={`${errMsg} shake`}>{errors.phone}</p>}
             </div>
@@ -628,9 +591,6 @@ Price Per Clean : £${formData.frequency === 'monthly' ? priceMonthly : price2Mo
       {/* Final Step: Success */}
       {step === 17 && (
         <div className="flex flex-col items-start justify-center py-8 space-y-4">
-          <noscript>
-            <img height="1" width="1" style={{ display: 'none' }} src={PIXEL_NOSCRIPT_SRC} alt="" />
-          </noscript>
           <div className="drop-in drop-in-1 w-16 h-16 bg-blue-700 text-[#010191] rounded-full flex items-center justify-center text-2xl shadow-lg shadow-blue-700/30 animate-bounce font-black">✓</div>
           <h2 className="drop-in drop-in-2 text-2xl md:text-4xl font-black uppercase leading-none max-w-sm text-blue">Confirmed!</h2>
           <p className="drop-in drop-in-3 text-sm font-bold text-blue/40 uppercase">Thank you!</p>

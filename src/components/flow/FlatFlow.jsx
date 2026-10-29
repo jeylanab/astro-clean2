@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { calculateTotal, pricingConfig } from '../../data/pricingConfig';
-import { trackLead, PIXEL_NOSCRIPT_SRC } from '../../metaPixel';
+import React, { useState } from 'react';
+import { calculateTotal, pricingConfig, fmtMoney } from '../../data/pricingConfig';
+import RepPriceStep from '../RepPriceStep';
 
 // Asset Imports
 import accessImg from '../../assets/access.png';
@@ -48,24 +48,24 @@ const FlatFlow = ({ propertyInfo, onBack }) => {
     thirdStoreyOrBelow: null,
     firstName: '',
     phone: '',
+    finalPrice: null,
   });
 
-  const [errors, setErrors]   = useState({});
+  const [errors, setErrors]     = useState({});
   const [shakeKey, setShakeKey] = useState(0);
-  const [sending, setSending]  = useState(false);
+  const [sending, setSending]   = useState(false);
 
-  // ── Meta Pixel: fire Lead event only when user reaches the Success step ──────
-  useEffect(() => {
-    if (step === 7) trackLead();
-  }, [step]);
+  // NOTE: Meta Pixel intentionally removed — rep sales on an iPad must not count as ad leads.
 
   const triggerShake = () => setShakeKey(k => k + 1);
   const next = () => setStep(s => s + 1);
   const prev = () => setStep(s => s - 1);
 
-  // Pricing
-  const price2Monthly = calculateTotal(formData);
-  const priceMonthly  = price2Monthly - (pricingConfig.frequency?.monthlyDiscount || 4);
+  // ── Pricing (sales rep: one price = 2-monthly + markup, rep can lower it) ────
+  const startPrice = calculateTotal(formData) + pricingConfig.repMarkup;
+  const finalPrice = formData.finalPrice ?? startPrice;
+  const discount   = Math.round((startPrice - finalPrice) * 100) / 100;
+  const isTBC      = formData.bedrooms === '6+';
 
   // ── Email Sender ─────────────────────────────────────────────────────────────
   const sendBookingEmail = async ({ address1, address2, postcode }) => {
@@ -80,9 +80,15 @@ const FlatFlow = ({ propertyInfo, onBack }) => {
       window.emailjs.init(EMAILJS_PUBLIC_KEY);
     }
 
+    const quoteLines = isTBC
+      ? 'Price             : TO BE CONFIRMED (6+ bedrooms)'
+      : `Starting Price    : £${fmtMoney(startPrice)}
+Agreed Price      : £${fmtMoney(finalPrice)}
+Discount Given    : £${fmtMoney(discount)}`;
+
     const message = `
 ═══════════════════════════════════
-   NEW FLAT BOOKING — ASTRO CLEAN
+   SALES REP BOOKING — FLAT — ASTRO CLEAN
 ═══════════════════════════════════
 
 👤 CUSTOMER DETAILS
@@ -101,8 +107,7 @@ Third Storey/Below  : ${formData.thirdStoreyOrBelow ? 'Yes' : 'No'}
 
 💷 QUOTE
 ────────
-Selected Plan   : ${formData.frequency === 'monthly' ? 'Monthly (save £4)' : '2-Monthly'}
-Price Per Clean : £${formData.frequency === 'monthly' ? priceMonthly : price2Monthly}
+${quoteLines}
 
 ═══════════════════════════════════
     `.trim();
@@ -245,65 +250,12 @@ Price Per Clean : £${formData.frequency === 'monthly' ? priceMonthly : price2Mo
         <DeadEnd message="Sorry! We can only clean windows on the third storey or below." />
       )}
 
-      {/* Step 4: Final Price */}
+      {/* Step 4: Rep Price (single price, rep can lower it) */}
       {step === 4 && (
-<div className="flex flex-col h-full">
-  <h2 className="drop-in drop-in-1 text-3xl md:text-4xl font-black uppercase mb-1 text-blue-800">
-    Instant Quote
-  </h2>
-
-  <p className="drop-in drop-in-2 text-[10px] font-bold text-green-700/40 mb-8 uppercase tracking-widest">
-    Select Frequency
-  </p>
-
-  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-
-    {/* Monthly */}
-    <div
-      onClick={() => { setFormData(prev => ({ ...prev, frequency: 'monthly' })); next(); }}
-      className="drop-in drop-in-3 bg-green-50 p-6 rounded-3xl border-2 border-green-400 cursor-pointer hover:shadow-2xl hover:shadow-green-400/30 relative group transition-all"
-    >
-      <div className="absolute -top-3 left-6 bg-green-500 text-white px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest">
-        Popular
-      </div>
-
-      <p className="uppercase font-black text-[10px] mb-2 text-green-700/70">
-        Monthly
-      </p>
-
-      <h3 className="text-4xl font-black mb-1 text-green-600">
-        £{priceMonthly}
-      </h3>
-
-      <p className="text-[10px] font-black text-green-700/50 uppercase">
-        Save £4
-      </p>
-
-      <div className="mt-4 bg-green-500 text-white py-2 rounded-lg font-black uppercase text-xs text-center tracking-widest group-hover:bg-green-600 transition-colors">
-        Select
-      </div>
-    </div>
-
-    {/* 2-Monthly */}
-    <div
-      onClick={() => { setFormData(prev => ({ ...prev, frequency: '2-monthly' })); next(); }}
-      className="drop-in drop-in-4 bg-green-50 p-6 rounded-3xl border border-green-300 cursor-pointer hover:border-green-500 transition-all group"
-    >
-      <p className="uppercase font-black text-[10px] mb-2 text-green-700">
-        2-Monthly
-      </p>
-
-      <h3 className="text-4xl font-black mb-1 text-green-600">
-        £{price2Monthly}
-      </h3>
-
-      <div className="mt-4 border border-green-300 py-2 rounded-lg font-black uppercase text-xs text-green-600 text-center group-hover:bg-green-500 group-hover:text-white transition-all">
-        Select
-      </div>
-    </div>
-
-  </div>
-</div>
+        <RepPriceStep
+          startPrice={startPrice}
+          onConfirm={(p) => { setFormData(prev => ({ ...prev, finalPrice: p })); next(); }}
+        />
       )}
 
       {/* Step 5: Contact Details */}
@@ -410,9 +362,6 @@ Price Per Clean : £${formData.frequency === 'monthly' ? priceMonthly : price2Mo
       {/* Step 7: Success */}
       {step === 7 && (
         <div className="flex flex-col items-start justify-center py-8 space-y-4">
-          <noscript>
-            <img height="1" width="1" style={{ display: 'none' }} src={PIXEL_NOSCRIPT_SRC} alt="" />
-          </noscript>
           <div className="drop-in drop-in-1 w-16 h-16 bg-blue-700 text-[#010191] rounded-full flex items-center justify-center text-2xl shadow-lg shadow-blue-700/30 animate-bounce font-black">✓</div>
           <h2 className="drop-in drop-in-2 text-2xl md:text-4xl font-black uppercase leading-none max-w-sm text-blue">Confirmed!</h2>
           <p className="drop-in drop-in-3 text-sm font-bold text-blue/40 uppercase">Thank you!</p>

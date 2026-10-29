@@ -1,4 +1,4 @@
-// src/pricingConfig.js
+// src/data/pricingConfig.js
 
 export const pricingConfig = {
   // Base prices based on Property Type and Bedroom Count
@@ -57,10 +57,14 @@ export const pricingConfig = {
     noRearAccess: 5,      // Surcharge when cleaner must go through property
   },
 
-  // Frequency Logic
+  // Frequency Logic (not used by the sales rep form, kept for reference)
   frequency: {
     monthlyDiscount: 4,
-  }
+  },
+
+  // Sales rep form: single price = 2-monthly price + this markup.
+  // Change this one number if Louis wants £2 instead of £3.
+  repMarkup: 3,
 };
 
 export const calculateTotal = (data) => {
@@ -105,3 +109,6 @@ export const calculateTotal = (data) => {
 
   return total;
 };
+
+// Show whole pounds as "29" and fractions as "29.50"
+export const fmtMoney = (n) => (Number.isInteger(n) ? `${n}` : Number(n).toFixed(2));
