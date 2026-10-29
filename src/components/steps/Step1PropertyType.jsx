@@ -1,0 +1,78 @@
+import React from 'react';
+
+// Importing assets
+import detachedImg from '../../assets/detached.png';
+import semiDetachedImg from '../../assets/semi-detached.png';
+import terracedImg from '../../assets/terraced.png';
+import townHouseImg from '../../assets/town-house.png';
+import bungalowImg from '../../assets/bungalow.png';
+import flatImg from '../../assets/flat.png';
+
+const properties = [
+  { id: 'detached', title: 'Detached', key: 'A', img: detachedImg },
+  { id: 'semi-detached', title: 'Semi-Detached', key: 'B', img: semiDetachedImg },
+  { id: 'terraced', title: 'Terraced', key: 'C', img: terracedImg },
+  { id: 'town-house', title: 'Town House', key: 'D', img: townHouseImg },
+  { id: 'bungalow', title: 'Bungalow', key: 'E', img: bungalowImg },
+  { id: 'flat', title: 'Flat', key: 'F', img: flatImg },
+];
+
+const Step1PropertyType = ({ selected, onSelect, onNext }) => {
+  return (
+    <div className="w-full flex flex-col items-start animate-in fade-in slide-in-from-bottom-8 duration-700">
+      
+      {/* Property Grid: Using gap-3 on mobile to save space */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 w-full mb-12">
+        {properties.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onSelect(item)}
+            className={`group flex flex-col items-start p-3 md:p-4 rounded-2xl border-2 transition-all duration-300 min-w-0
+              ${selected?.id === item.id 
+                ? 'border-black bg-black/5 shadow-lg' 
+                : 'border-black/10 bg-black/5 hover:border-black/30'}`}
+          >
+            {/* Image Container */}
+            <div className="w-full aspect-video mb-3 md:mb-4 flex items-center justify-center overflow-hidden">
+              <img 
+                src={item.img} 
+                alt={item.title} 
+                className={`w-full h-full object-contain transition-transform duration-500 
+                  ${selected?.id === item.id ? 'scale-110' : 'group-hover:scale-105'}`} 
+              />
+            </div>
+
+            {/* Label Container: Using flex-col for small screens to prevent overlap */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full">
+              {/* Key Badge: Flex-shrink-0 ensures it stays a perfect square */}
+              <span className={`flex-shrink-0 w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-md font-black text-[10px] md:text-xs transition-all
+                ${selected?.id === item.id 
+                  ? 'bg-black text-[#010191]' 
+                  : 'bg-black/10 text-blue group-hover:bg-black/20'}`}>
+                {item.key}
+              </span>
+              
+              {/* Title: Using truncate or normal wrap depending on space */}
+              <span className="text-[10px] md:text-xs lg:text-sm font-bold text-blue/80 uppercase tracking-tight leading-none break-words text-left">
+                {item.title}
+              </span>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {selected && (
+        <button
+          onClick={onNext}
+          className="w-full sm:w-auto bg-black text-blue font-black py-4 px-10 rounded-xl text-sm uppercase tracking-widest animate-in fade-in zoom-in-95 duration-300 hover:bg-slate-900 active:scale-95"
+        >
+          Continue
+        </button>
+        
+      )}
+      
+    </div>
+  );
+};
+
+export default Step1PropertyType;
