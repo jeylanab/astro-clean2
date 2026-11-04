@@ -27,6 +27,18 @@ const RepPriceStep = ({ startPrice, onConfirm }) => {
 
   return (
     <div className="flex flex-col items-center w-full">
+      {/* Hide the browser's up/down spinner arrows on the price input */}
+      <style>{`
+        .rep-price-input::-webkit-outer-spin-button,
+        .rep-price-input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        .rep-price-input {
+          -moz-appearance: textfield;
+          appearance: textfield;
+        }
+      `}</style>
       <h2 className="drop-in drop-in-1 text-3xl md:text-4xl font-black uppercase mb-6 text-blue-800">
         Instant Quote
       </h2>
@@ -45,7 +57,7 @@ const RepPriceStep = ({ startPrice, onConfirm }) => {
             onChange={onType}
             onBlur={onBlur}
             style={{ width: `${Math.max(text.length, 2) + 0.5}ch` }}
-            className="bg-transparent text-8xl md:text-[10rem] font-black text-green-600 text-center outline-none leading-none"
+            className="rep-price-input bg-transparent text-8xl md:text-[10rem] font-black text-green-600 text-center outline-none leading-none"
           />
         </div>
 
